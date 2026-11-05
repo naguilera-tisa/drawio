@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Editor</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="editor">
+  <header class="bar">
+    <a href="/">← Diagramas</a>
+    <input id="title" type="text" aria-label="Título" maxlength="200">
+    <span id="saveState"></span>
+  </header>
+  <div id="banner"></div>
+  <iframe id="frame" title="draw.io"></iframe>
+  <script src="/editor.js" type="module"></script>
+</body>
+</html>

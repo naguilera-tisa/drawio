@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mis diagramas</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>Mis diagramas</h1>
+    <input id="search" type="search" placeholder="Buscar por título…" aria-label="Buscar">
+    <button id="new" class="primary">+ Nuevo diagrama</button>
+  </header>
+  <main>
+    <p id="status" class="muted" role="status"></p>
+    <div id="grid" class="grid"></div>
+    <nav id="pager" class="pager"></nav>
+  </main>
+  <script src="/gallery.js" type="module"></script>
+</body>
+</html>
