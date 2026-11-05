@@ -84,6 +84,55 @@
 	 */
 	SelfHostFile.prototype.pollingInterval = 3000;
 
+	var anonymousUser = null;
+
+	/**
+	 * Identidad anónima de esta pestaña (no hay login). P2PCollab descarta todos
+	 * los mensajes (diffs, notificaciones, cursores, selecciones) si el usuario
+	 * es null o no tiene displayName, así que este método es obligatorio para
+	 * la colaboración. El nombre puede fijarse con ?nombre=.
+	 */
+	SelfHostFile.prototype.getCurrentUser = function()
+	{
+		if (anonymousUser == null)
+		{
+			var id = null;
+
+			try
+			{
+				id = window.sessionStorage.getItem('selfhost.userId');
+			}
+			catch (e)
+			{
+				// sessionStorage no disponible: la identidad dura lo que la página
+			}
+
+			if (id == null)
+			{
+				id = Editor.guid();
+
+				try
+				{
+					window.sessionStorage.setItem('selfhost.userId', id);
+				}
+				catch (e)
+				{
+					// ignorado
+				}
+			}
+
+			var name = urlParams['nombre'];
+
+			anonymousUser = {
+				id: id,
+				displayName: (name != null && name.length > 0) ? name.substring(0, 40) :
+					'Usuario ' + id.substring(0, 4)
+			};
+		}
+
+		return anonymousUser;
+	};
+
 	SelfHostFile.prototype.getMode = function()
 	{
 		return App.MODE_BROWSER;
@@ -315,6 +364,8 @@
 			return appStart.apply(this, arguments);
 		}
 
+		// Expuesto solo para depurar y para pruebas automatizadas del editor.
+		window.shUi = this;
 		this.restoreLibraries();
 		this.spinner.stop();
 		SelfHostFile.open(this, id);

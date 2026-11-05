@@ -212,7 +212,7 @@ export function buildApp({
   // El editor es drawio completo (sin iframe embed) con SelfHostFile y sync.
   app.get('/editor/:id', (req, reply) => {
     if (!checkId(req, reply)) return;
-    return reply.redirect(`/drawio/index.html?shid=${req.params.id}&splash=0&offline=1&ui=kennedy`);
+    return reply.redirect(`/drawio/index.html?shid=${req.params.id}&splash=0&ui=kennedy`);
   });
   app.get('/editor', (req, reply) => reply.redirect('/'));
 

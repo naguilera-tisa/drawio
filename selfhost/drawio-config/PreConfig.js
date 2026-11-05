@@ -13,6 +13,10 @@ window.DRAW_MATH_URL = 'math4/es5';
 window.DRAWIO_LOG_URL = ''; // Telemetría apagada
 window.DRAWIO_CONFIG = null;
 
+// Sin integraciones externas. No se usa offline=1: con él drawio se considera
+// sin conexión (estado "Offline") y no notifica ni aplica cambios remotos.
+['picker', 'gapi', 'od', 'gh', 'gl', 'tr', 'ms365'].forEach(function(k) { urlParams[k] = '0'; });
+
 // Colaboración: sync automático (merge de cambios remotos vía SelfHostFile).
 urlParams['sync'] = 'auto';
 
