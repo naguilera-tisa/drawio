@@ -46,6 +46,21 @@ test('CRUD, versionado y conflicto', { skip }, async () => {
   assert.equal((await call('GET', `/api/diagrams/${created.id}`)).statusCode, 404);
 });
 
+test('el historial se limita a una versión por ventana de tiempo', { skip }, async () => {
+  const d = (await call('POST', '/api/diagrams', { title: 'Churn', xml: '<a/>' })).json();
+  let version = d.version;
+  for (const xml of ['<b/>', '<c/>', '<d/>']) {
+    const res = await call('PUT', `/api/diagrams/${d.id}`, { xml, version });
+    assert.equal(res.statusCode, 200);
+    version = res.json().version;
+  }
+  // Tres guardados seguidos dentro de la ventana (5 min por defecto): una sola fila.
+  const versions = (await call('GET', `/api/diagrams/${d.id}/versions`)).json();
+  assert.equal(versions.length, 1);
+  // El diagrama actual sí tiene el último XML.
+  assert.equal((await call('GET', `/api/diagrams/${d.id}`)).json().xml, '<d/>');
+});
+
 test('validaciones', { skip }, async () => {
   assert.equal((await call('GET', '/api/diagrams/no-es-uuid')).statusCode, 400);
   const d = (await call('POST', '/api/diagrams', {})).json();

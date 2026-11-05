@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { registerRealtime } from './realtime.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,7 +14,13 @@ const MAX_VERSIONS = 50;
 
 const LIST_COLUMNS = 'id, title, thumbnail, version, created_at, updated_at';
 
-export function buildApp({ pool, drawioDir, publicDir, preConfigFile, logger = false }) {
+// Ventana mínima entre dos versiones históricas del mismo diagrama (ms).
+const DEFAULT_VERSION_INTERVAL_MS = Number(process.env.VERSION_INTERVAL_MS ?? 5 * 60_000);
+
+export function buildApp({
+  pool, drawioDir, publicDir, preConfigFile, logger = false,
+  versionIntervalMs = DEFAULT_VERSION_INTERVAL_MS,
+}) {
   const app = Fastify({ logger, bodyLimit: 20 * 1024 * 1024 });
 
   // ---------- API ----------
@@ -103,7 +110,16 @@ export function buildApp({ pool, drawioDir, publicDir, preConfigFile, logger = f
       }
       const row = upd.rows[0];
       if (xml !== undefined) {
-        await client.query('INSERT INTO diagram_versions (diagram_id, version, xml) VALUES ($1, $2, $3)', [row.id, row.version, row.xml]);
+        // Con edición colaborativa se guarda cada pocos segundos: el historial solo
+        // recibe una fila por ventana de VERSION_INTERVAL_MS (0 = en cada guardado).
+        await client.query(
+          `INSERT INTO diagram_versions (diagram_id, version, xml)
+           SELECT $1, $2, $3
+           WHERE NOT EXISTS (
+             SELECT 1 FROM diagram_versions
+             WHERE diagram_id = $1 AND created_at > now() - ($4 * interval '1 millisecond'))`,
+          [row.id, row.version, row.xml, versionIntervalMs],
+        );
         await client.query(
           `DELETE FROM diagram_versions WHERE diagram_id = $1 AND id NOT IN (
              SELECT id FROM diagram_versions WHERE diagram_id = $1 ORDER BY version DESC LIMIT ${MAX_VERSIONS})`,
@@ -165,10 +181,17 @@ export function buildApp({ pool, drawioDir, publicDir, preConfigFile, logger = f
     return rows[0];
   });
 
+  // ---------- Colaboración en tiempo real ----------
+  app.register(registerRealtime);
+
   // ---------- Estáticos ----------
   // PreConfig.js de drawio se sustituye por la versión self-hosted (antes del static de drawio).
   app.get('/drawio/js/PreConfig.js', (req, reply) =>
     reply.sendFile('PreConfig.js', path.dirname(preConfigFile)),
+  );
+  // Clase de archivo colaborativa (se carga desde PreConfig.js tras app.min.js).
+  app.get('/drawio/js/SelfHostFile.js', (req, reply) =>
+    reply.sendFile('SelfHostFile.js', path.dirname(preConfigFile)),
   );
   // El service worker no se sirve: evita caches obsoletas con la app embebida.
   app.get('/drawio/service-worker.js', (req, reply) => reply.code(404).send());
@@ -186,7 +209,11 @@ export function buildApp({ pool, drawioDir, publicDir, preConfigFile, logger = f
     index: ['index.html'],
   });
 
-  app.get('/editor/:id', (req, reply) => reply.sendFile('editor.html', publicDir));
+  // El editor es drawio completo (sin iframe embed) con SelfHostFile y sync.
+  app.get('/editor/:id', (req, reply) => {
+    if (!checkId(req, reply)) return;
+    return reply.redirect(`/drawio/index.html?shid=${req.params.id}&splash=0&offline=1&ui=kennedy`);
+  });
   app.get('/editor', (req, reply) => reply.redirect('/'));
 
   app.setErrorHandler((err, req, reply) => {

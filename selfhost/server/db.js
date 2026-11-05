@@ -29,6 +29,7 @@ const MIGRATIONS = [
    )`,
   `CREATE INDEX IF NOT EXISTS diagrams_updated_idx ON diagrams (updated_at DESC) WHERE deleted_at IS NULL`,
   `CREATE INDEX IF NOT EXISTS diagram_versions_idx ON diagram_versions (diagram_id, version DESC)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS diagram_versions_uniq ON diagram_versions (diagram_id, version)`,
 ];
 
 export async function migrate(pool) {

@@ -12,4 +12,37 @@ window.DRAWIO_LIGHTBOX_URL = null;
 window.DRAW_MATH_URL = 'math4/es5';
 window.DRAWIO_LOG_URL = ''; // Telemetría apagada
 window.DRAWIO_CONFIG = null;
-urlParams['sync'] = 'manual';
+
+// Colaboración: sync automático (merge de cambios remotos vía SelfHostFile).
+urlParams['sync'] = 'auto';
+
+// Relay WebSocket de colaboración (server/realtime.js). REALTIME_URL (/cache)
+// no está implementado aún: drawio detecta que no responde y sincroniza solo
+// por el socket, recargando el archivo ante cada notificación de guardado.
+window.RT_WEBSOCKET_URL = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') +
+	window.location.host + '/rt';
+
+// Carga SelfHostFile.js justo después de app.min.js y antes de que arranque App
+// (bootstrap.js llama a App.main en el callback de app.min.js), sin tocar
+// los archivos de drawio.
+(function()
+{
+	var mxscriptOrig = window.mxscript;
+
+	window.mxscript = function(src, onLoad)
+	{
+		if (typeof src === 'string' && src === 'js/app.min.js' && typeof onLoad === 'function')
+		{
+			var args = Array.prototype.slice.call(arguments);
+
+			args[1] = function()
+			{
+				mxscriptOrig('js/SelfHostFile.js', onLoad);
+			};
+
+			return mxscriptOrig.apply(this, args);
+		}
+
+		return mxscriptOrig.apply(this, arguments);
+	};
+})();
